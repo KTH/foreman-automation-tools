@@ -321,9 +321,9 @@ Typical usage:
     parser.add_argument('--dry-run', action='store_true', help='stop before any action which changes existing data')
     parser.add_argument('--verbose', '-v', action='count', help='give more information during operations')
 
-    # def cmd_help(args):
-    #     parser.print_help()
-    # parser.set_defaults(func=cmd_help)
+    def cmd_help(args):
+        parser.print_help()
+    parser.set_defaults(func=cmd_help)
 
     subparsers = parser.add_subparsers(help='sub-command help')
 
