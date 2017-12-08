@@ -278,7 +278,7 @@ def update_views(content_views, description):
 #  - Optionally promote the composite views to the specified environments.
 def cmd_update(args):
     # Look at promotion parts first, to validate the command line arguments early.
-    promotion_paths = get_promotion_paths(args.promote_to)
+    promotion_paths = get_promotion_paths(args.promote_to) if args.promote_to else []
 
     # Update the component views.
     components_to_update = get_all_composite_view_components(args.composite_view_names)
