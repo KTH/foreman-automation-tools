@@ -223,7 +223,9 @@ def update_composite_views_component_versions(composite_views, latest_component_
 
 
 
-#  the view must match the view id
+# Promote a content view from one environment to the next.
+#  fromenv must be the prior env of toenv
+#  the view name must match the view id
 def promote_content_view_environment(content_view_name, content_view_id, fromenv, toenv, description):
     for content_view_version in get_content_view_data(content_view_name, content_view_id):
         content_view_version_lifecycle_environments = content_view_version['Lifecycle Environments']
