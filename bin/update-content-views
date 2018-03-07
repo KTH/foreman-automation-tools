@@ -273,11 +273,11 @@ def update_views(content_views, description):
 
 
 
-# Update composite views and optionally promote to an environment (typically the staging environment).
+# Update composite views and optionally promote the new versions to an environment (typically the staging environment).
 #  - Update the component views.
 #  - Change the component view versions in the composite views.
 #  - Update the composite views.
-#  - Optionally promote the composite views to the specified environments.
+#  - Optionally promote the new composite view versions to the specified environments.
 def cmd_update(args):
     # Look at promotion paths first, to validate the command line arguments early.
     promotion_paths = get_promotion_paths(args.promote_to) if args.promote_to else []
@@ -297,7 +297,7 @@ def cmd_update(args):
 
     promote_views_along_paths(all_composite_views, promotion_paths, args.description)
 
-# Promote all composite views (typically from the staging environment to production).
+# Promote versions of composite views (typically from the staging environment to production).
 def cmd_promote(args):
     promotion_paths = get_promotion_paths(args.promote_to, promote_from_environment=args.promote_from)
     all_composite_views = get_all_composite_views(args.composite_view_names)
