@@ -231,37 +231,37 @@ def update_composite_views_component_versions(composite_views, latest_component_
 #  fromenv must be the prior env of toenv
 #  the view name must match the view id
 #  the view must match the view id
-def promote_content_view_environment(content_view_name, content_view_id, fromenv, toenv, description):
+def promote_content_view_environment(content_view_name, content_view_id, fromenv, toenv, description, force_regen=False):
     for content_view_version in get_content_view_data(content_view_name, content_view_id):
         content_view_version_lifecycle_environments = content_view_version['Lifecycle Environments']
         if fromenv in content_view_version_lifecycle_environments:
             if toenv not in content_view_version_lifecycle_environments:
                 # Promote this version.
-                hammer("content-view", "version", "promote", "--organization-id", "1", "--content-view", content_view_name, "--content-view-id", str(content_view_id), "--from-lifecycle-environment", fromenv, "--to-lifecycle-environment", toenv, "--description", description)
+                hammer("content-view", "version", "promote", "--organization-id", "1", "--content-view", content_view_name, "--content-view-id", str(content_view_id), "--from-lifecycle-environment", fromenv, "--to-lifecycle-environment", toenv, "--description", description] + (["--force-yum-metadata-regeneration", "true"] if force_regen else [])
                 return
 
 # Promote a set of content views to <toenv>, if the content view is in <fromenv>.
 # content_views is a an iterable of (content_view_name, content_view_id)
 #  content_view_name must match content_view_id
-def promote_content_views_environment(content_views, fromenv, toenv, description):
+def promote_content_views_environment(content_views, fromenv, toenv, description, **kwargs):
     for (content_view_name, content_view_id) in content_views:
-        promote_content_view_environment(content_view_name, content_view_id, fromenv, toenv, description)
+        promote_content_view_environment(content_view_name, content_view_id, fromenv, toenv, description, **kwargs)
 
 # Promote a set of content views along the specified path.
 # content_views is a an iterable of (content_view_name, content_view_id)
 #  content_view_name must match content_view_id
 # promotion_path is a list of (from,to) pairs of environment names.
-def promote_views_along_path(content_views, promotion_path, description):
+def promote_views_along_path(content_views, promotion_path, description, **kwargs):
     for (promote_from, promote_to) in promotion_path:
-        promote_content_views_environment(content_views, promote_from, promote_to, description)
+        promote_content_views_environment(content_views, promote_from, promote_to, description, **kwargs)
 
 # Promote a set of content views along the paths specified.
 # content_views is a an iterable of (content_view_name, content_view_id)
 #  content_view_name must match content_view_id
 # promotion_paths is a list of lists of (from,to) pairs of environment names.
-def promote_views_along_paths(content_views, promotion_paths, description):
+def promote_views_along_paths(content_views, promotion_paths, description, **kwargs):
     for promotion_path in promotion_paths:
-        promote_views_along_path(content_views, promotion_path, description)
+        promote_views_along_path(content_views, promotion_path, description, **kwargs)
 
 #  the view must match the view id
 def update_view(content_view_name, content_view_id, description):
@@ -305,7 +305,7 @@ def cmd_update(args):
     # Update the composite views.
     update_views(all_composite_views, args.description)
 
-    promote_views_along_paths(all_composite_views, promotion_paths, args.description)
+    promote_views_along_paths(all_composite_views, promotion_paths, args.description, force_regen=args.force_regen)
 
 # Promote all composite views (typically from the staging environment to production).
 def cmd_promote(args):
@@ -313,7 +313,7 @@ def cmd_promote(args):
 
     promotion_paths = get_promotion_paths(args.promote_to, promote_from_environment=args.promote_from)
     all_composite_views = get_all_composite_views(args.composite_view_names)
-    promote_views_along_paths(all_composite_views, promotion_paths, args.description)
+    promote_views_along_paths(all_composite_views, promotion_paths, args.description, force_regen=args.force_regen)
 
 def main():
     date_and_time = datetime.datetime.now().strftime("%Y%m%d-%H%M")
@@ -333,6 +333,7 @@ Typical usage:
     parser.add_argument('--composite-view', metavar="NAME", action='append', dest="composite_view_names", help='only update/promote this composite view (multiple allowed)')
     parser.add_argument('--dry-run', action='store_true', help='stop before any action which changes existing data')
     parser.add_argument('--verbose', '-v', action='count', help='give more information during operations')
+    parser.add_argument('--force-yum-metadata-regeneration', dest="force_regen", action='store_true', help='force metadata regeneration')
 
     def cmd_help(args):
         parser.print_help()
