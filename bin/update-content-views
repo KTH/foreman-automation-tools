@@ -222,6 +222,7 @@ def update_composite_views_component_versions(composite_views, latest_component_
 # Promote a content view from one environment to the next.
 #  fromenv must be the prior env of toenv
 #  the view name must match the view id
+#  the view must match the view id
 def promote_content_view_environment(content_view_name, content_view_id, fromenv, toenv, description):
     for content_view_version in get_content_view_data(content_view_name, content_view_id):
         content_view_version_lifecycle_environments = content_view_version['Lifecycle Environments']
@@ -269,15 +270,15 @@ def update_views(content_views, description):
 
 
 
-# Update composite views and optionally promote the new versions to an environment (typically the staging environment).
+# Update composite views and optionally promote to an environment (typically the staging environment).
 #  - Update the component views.
 #  - Change the component view versions in the composite views.
 #  - Update the composite views.
-#  - Optionally promote the new composite view versions to the specified environments.
+#  - Optionally promote the composite views to the specified environments.
 def cmd_update(args):
     ensure_auth_session()
 
-    # Look at promotion paths first, to validate the command line arguments early.
+    # Look at promotion parts first, to validate the command line arguments early.
     promotion_paths = get_promotion_paths(args.promote_to) if args.promote_to else []
 
     # Update the component views.
@@ -295,7 +296,7 @@ def cmd_update(args):
 
     promote_views_along_paths(all_composite_views, promotion_paths, args.description)
 
-# Promote versions of composite views (typically from the staging environment to production).
+# Promote all composite views (typically from the staging environment to production).
 def cmd_promote(args):
     ensure_auth_session()
 
