@@ -125,6 +125,14 @@ def get_promotion_paths(promote_to_environments, **kwargs):
     return [get_promotion_path(promote_to_environment, **kwargs) for promote_to_environment in promote_to_environments]
 
 #  the view must match the view id
+def get_content_view_description(content_view_name, content_view_id):
+    if content_view_id is None:
+        content_view_info = hammer("content-view", "info", "--organization-id", "1", "--name", content_view_name, updates=False)
+    else:
+        content_view_info = hammer("content-view", "info", "--organization-id", "1", "--name", content_view_name, "--id", str(content_view_id), updates=False)
+    return content_view_info['Description']
+
+#  the view must match the view id
 def get_composite_view_component_versions(composite_view_name, composite_view_id):
     composite_view_info = hammer("content-view", "info", "--organization-id", "1", "--name", composite_view_name, "--id", str(composite_view_id), updates=False)
     composite_view_component_versions = composite_view_info['Components'].values()
@@ -257,6 +265,9 @@ def promote_views_along_paths(content_views, promotion_paths, description):
 
 #  the view must match the view id
 def update_view(content_view_name, content_view_id, description):
+    desc = get_content_view_description(content_view_name, content_view_id)
+    if desc is not None and ":noautoupdate:" in desc:
+        return
     if content_view_id is None:
         hammer("content-view", "publish", "--organization-id", "1", "--name", content_view_name, "--description", description)
     else:
