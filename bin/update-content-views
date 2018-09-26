@@ -39,8 +39,7 @@ def union_of_all(*sets):
 
 global_variables = {
     "verbose_level": 0,
-    "allow_updates": True,
-    "accountinfodata": None
+    "allow_updates": True
 }
 
 def set_verbose(verbose):
@@ -49,19 +48,12 @@ def set_verbose(verbose):
 def set_dry_run():
     global_variables["allow_updates"] = False
 
-def set_accountinfo(accountinfo):
-    with open(accountinfo, "r") as pwf:
-        global_variables["accountinfodata"] = json.load(pwf)
-    assert("username" in global_variables["accountinfodata"] and "password" in global_variables["accountinfodata"])
-
 def verbose_print(levels, *args, **kwargs):
     if global_variables["verbose_level"] in levels:
         print(*args, **kwargs)
 
 def hammer(*args, updates=True):
-    assert(global_variables["accountinfodata"] is not None)
-
-    commandline = ["hammer"] + ("--verbose" if global_variables["verbose_level"] in [2] else []) + ["--output", "json", "-u", global_variables["accountinfodata"]["username"], "-p", "XXX"] + list(args)
+    commandline = ["hammer"] + ("--verbose" if global_variables["verbose_level"] in [2] else []) + ["--output", "json"]+ list(args)
     commandlinestring = " ".join([shlex.quote(str(s)) for s in commandline])
 
     if updates and not global_variables["allow_updates"]:
@@ -73,12 +65,8 @@ def hammer(*args, updates=True):
         assert(arg is not None)
         assert(isinstance(arg, str))
 
-    commandline[6] = global_variables["accountinfodata"]["password"]
     completed = subprocess.run(commandline, stdout=subprocess.PIPE)
-
-    # Dirty hack, hide the password from backtraces produced by check_returncode()
-    completed.args[6] = "XXX"
-
+    # (Modify completed.args here if secrets were sent on the commandline.)
     completed.check_returncode()
 
     jsondata = completed.stdout.decode("utf8")
@@ -89,6 +77,14 @@ def hammer(*args, updates=True):
     verbose_print([1,2], "Command successful, returned no data.", file=sys.stderr)
     return None
 
+
+
+# Fail if not currently authenticated.
+#  This does not ensure that the session is still valid (not expired).
+def ensure_auth_session():
+    authstatus = hammer("auth", "status", updates=False)
+    if 'message' not in authstatus or 'Session exists' not in authstatus['message']:
+        raise Exception("Login required: hammer auth login --help")
 
 
 # Get all data about a content view.
@@ -279,6 +275,8 @@ def update_views(content_views, description):
 #  - Update the composite views.
 #  - Optionally promote the new composite view versions to the specified environments.
 def cmd_update(args):
+    ensure_auth_session()
+
     # Look at promotion paths first, to validate the command line arguments early.
     promotion_paths = get_promotion_paths(args.promote_to) if args.promote_to else []
 
@@ -299,6 +297,8 @@ def cmd_update(args):
 
 # Promote versions of composite views (typically from the staging environment to production).
 def cmd_promote(args):
+    ensure_auth_session()
+
     promotion_paths = get_promotion_paths(args.promote_to, promote_from_environment=args.promote_from)
     all_composite_views = get_all_composite_views(args.composite_view_names)
     promote_views_along_paths(all_composite_views, promotion_paths, args.description)
@@ -310,14 +310,13 @@ def main():
 Typical usage:
 
   To update the staging environment:
-    %(prog)s --account-info /path/to/accountinfo.json -v update --promote-to Staging
+    %(prog)s -v update --promote-to Staging
 
   To promote previously staged changes to the production environment:
-    %(prog)s --account-info /path/to/accountinfo.json -v promote --from Staging --to Production
+    %(prog)s -v promote --from Staging --to Production
 """
 
     parser = argparse.ArgumentParser(description='Manage updates of content views in Foreman/Katello.', epilog=longtext, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--account-info', metavar="JSONFILE", required=True, help='contains username and password')
     parser.add_argument('--description', default=date_and_time, metavar="STRING", help='set comment added to update operations')
     parser.add_argument('--composite-view', metavar="NAME", action='append', dest="composite_view_names", help='only update/promote this composite view (multiple allowed)')
     parser.add_argument('--dry-run', action='store_true', help='stop before any action which changes existing data')
@@ -342,7 +341,6 @@ Typical usage:
     set_verbose(args.verbose)
     if args.dry_run:
         set_dry_run()
-    set_accountinfo(args.account_info)
     args.func(args)
 
 main()
