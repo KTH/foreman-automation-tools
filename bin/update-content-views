@@ -180,6 +180,7 @@ def get_content_view_data(content_view_name, content_view_id):
     else:
         return hammer("content-view", "version", "list", "--organization-id", "1", "--content-view", content_view_name, "--content-view-id", str(content_view_id), updates=False)
 
+# Given a content view name and id, returns the most current content view version.
 #  the view must match the view id
 def get_latest_view_version(content_view_name, content_view_id):
     for content_view_version_info in get_content_view_data(content_view_name, content_view_id):
