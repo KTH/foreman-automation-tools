@@ -32,4 +32,7 @@ Typical usage:
 
   To promote previously staged changes to the production environment:
     update-content-views -v promote --from Staging --to Production
+
+  To delete the oldest content views:
+    update-content-views -v expire
 ```

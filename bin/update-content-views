@@ -180,6 +180,19 @@ def get_content_view_data(content_view_name, content_view_id):
     else:
         return hammer("content-view", "version", "list", "--organization-id", "1", "--content-view", content_view_name, "--content-view-id", str(content_view_id), updates=False)
 
+# Given a conent view name and id, returns a list of content view versions, sorted by the given key.
+#  the view must match the view id
+def get_sorted_content_view_data(*args, key='version'):
+    def version_key(content_view_version_info):
+        version = content_view_version_info['Version']
+        return [int(part) for part in version.split(".")]
+    keyfuns = {
+        'version': version_key
+    }
+    data = get_content_view_data(*args)
+    data.sort(key=keyfuns[key])
+    return data
+
 # Given a content view name and id, returns the most current content view version.
 #  the view must match the view id
 def get_latest_view_version(content_view_name, content_view_id):
@@ -225,8 +238,13 @@ def update_composite_views_component_versions(composite_views, latest_component_
     for (content_view_name, content_view_id) in composite_views:
         update_composite_view_component_versions(content_view_name, content_view_id, latest_component_versions)
 
-
-
+# Deletes a content view version.
+#  May raise a subprocess.CalledProcessError on failure.
+def delete_content_view_version(content_view_name, content_view_id, content_view_version):
+    if content_view_id is None:
+        hammer("content-view", "version", "delete", "--organization-id", "1", "--content-view", content_view_name, "--id", str(content_view_version['ID']), "--version", content_view_version['Version'])
+    else:
+        hammer("content-view", "version", "delete", "--organization-id", "1", "--content-view", content_view_name, "--content-view-id", str(content_view_id), "--id", str(content_view_version['ID']), "--version", content_view_version['Version'])
 
 # Promote a content view from one environment to the next.
 #  fromenv must be the prior env of toenv
@@ -316,6 +334,26 @@ def cmd_promote(args):
     all_composite_views = get_all_composite_views(args.composite_view_names)
     promote_views_along_paths(all_composite_views, promotion_paths, args.description, force_regen=args.force_regen)
 
+# Expire content views.
+def cmd_expire(args):
+    keep = int(args.keep)
+
+    ensure_auth_session()
+
+    all_composite_views = get_all_composite_views(args.composite_view_names)
+    components_to_expire = list(get_all_composite_view_components(args.composite_view_names))
+
+    # Expire composite views first, then their components.
+    for (content_view_name, content_view_id) in all_composite_views + components_to_expire:
+        versions = get_sorted_content_view_data(content_view_name, content_view_id, key='version')
+        try_expire = versions[0:-keep]
+        for version in try_expire:
+            try:
+                delete_content_view_version(content_view_name, content_view_id, version)
+            except subprocess.CalledProcessError as e:
+                verbose_print([1,2], "Ignoring error while deleting content view {} (id {}) version {}: {}".format(content_view_name, content_view_id, version, e), file=sys.stderr)
+                verbose_print([0,1,2], "Skipped content view {} (id {}) version {}".format(content_view_name, content_view_id, version))
+
 def main():
     date_and_time = datetime.datetime.now().strftime("%Y%m%d-%H%M")
 
@@ -350,6 +388,10 @@ Typical usage:
     parser_promote.add_argument('--from', dest="promote_from", metavar="ENV", required=True, help='promote from this environment')
     parser_promote.add_argument('--to', dest="promote_to", metavar="ENV", required=True, action='append', help='promote to this environment (multiple allowed)')
     parser_promote.set_defaults(func=cmd_promote)
+
+    parser_expire = subparsers.add_parser('expire', help='expire content view versions')
+    parser_expire.add_argument('--keep', metavar="INTEGER", default="12", required=True, help='keep at least the INTEGER latest versions in each ontent view')
+    parser_expire.set_defaults(func=cmd_expire)
 
     args = parser.parse_args()
     set_verbose(args.verbose)
