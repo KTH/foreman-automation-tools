@@ -238,7 +238,7 @@ def promote_content_view_environment(content_view_name, content_view_id, fromenv
         if fromenv in content_view_version_lifecycle_environments:
             if toenv not in content_view_version_lifecycle_environments:
                 # Promote this version.
-                hammer("content-view", "version", "promote", "--organization-id", "1", "--content-view", content_view_name, "--content-view-id", str(content_view_id), "--from-lifecycle-environment", fromenv, "--to-lifecycle-environment", toenv, "--description", description] + (["--force-yum-metadata-regeneration", "true"] if force_regen else [])
+                hammer("content-view", "version", "promote", "--organization-id", "1", "--content-view", content_view_name, "--content-view-id", str(content_view_id), "--from-lifecycle-environment", fromenv, "--to-lifecycle-environment", toenv, "--description", description, *(["--force-yum-metadata-regeneration", "true"] if force_regen else []))
                 return
 
 # Promote a set of content views to <toenv>, if the content view is in <fromenv>.
